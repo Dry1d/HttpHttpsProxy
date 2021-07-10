@@ -1,0 +1,51 @@
+apply plugin: 'java'
+apply plugin: 'jacoco'
+apply plugin: 'application'
+
+
+mainClassName = 'HttpHttpsProxy.HttpHttpsProxy'
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+    jcenter()
+}
+configurations {
+    compile
+    addjar
+}
+
+dependencies {
+    implementation group: 'org.jsoup', name: 'jsoup', version: '1.13.1'
+    compile group: 'org.jsoup', name: 'jsoup', version: '1.13.1'
+    addjar group: 'org.jsoup', name: 'jsoup', version: '1.13.1'
+    
+    compile group: 'org.codehaus.plexus', name: 'plexus-archiver',version: '2.2'
+    addjar group: 'org.codehaus.plexus', name: 'plexus-archiver',version: '2.2'
+
+    testImplementation     'junit:junit:4.13'
+}
+
+task fatJar(type: Jar) {
+    
+    manifest {
+        attributes (
+        'Main-Class': 'HttpHttpsProxy.HttpHttpsProxy',
+        "Class-Path": configurations.compile.collect { it.getName()}.join(' ')       
+        )
+        
+    }
+    from {
+        configurations.addjar.collect {
+            if(it.isDirectory()){
+                it
+            }else{
+                zipTree(it)
+            }
+        }
+    }
+    with jar
+}
+
+tasks.build.dependsOn('fatJar')
+buildDir = new File(rootProject.projectDir, "build/")
