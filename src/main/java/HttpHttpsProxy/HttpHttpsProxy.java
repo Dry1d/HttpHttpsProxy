@@ -45,7 +45,7 @@ import java.util.Scanner;
  *
  */
 public class HttpHttpsProxy implements Runnable {
-// Main method for the program
+
 
     public static Log log = new Log();
     static String fs = System.getProperty("file.separator");
