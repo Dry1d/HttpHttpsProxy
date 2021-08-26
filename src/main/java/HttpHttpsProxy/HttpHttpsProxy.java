@@ -7,20 +7,29 @@ package HttpHttpsProxy;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.net.MalformedURLException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
+import java.net.URL;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Scanner;
+import java.util.function.Consumer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * The Proxy creates a Server Socket which will wait for connections on the
@@ -46,370 +55,47 @@ import java.util.Scanner;
  */
 public class HttpHttpsProxy implements Runnable {
 
-
     public static Log log = new Log();
     static String fs = System.getProperty("file.separator");
     private RequestHandler runnable = null;
 
     List<File> list_files = new ArrayList();
 
-    static String[] first_domain_levels = {
-        ".academy",
-        ".accountant",
-        ".accountants",
-        ".active",
-        ".actor",
-        ".adult",
-        ".aero",
-        ".agency",
-        ".airforce",
-        ".apartments",
-        ".app",
-        ".archi",
-        ".army",
-        ".associates",
-        ".asia",
-        ".attorney",
-        ".auction",
-        ".audio",
-        ".autos",
-        ".biz",
-        ".cat",
-        ".com",
-        ".coop",
-        ".dance",
-        ".edu",
-        ".eus",
-        ".family",
-        ".gov",
-        ".info",
-        ".int",
-        ".jobs",
-        ".mil",
-        ".mobi",
-        ".museum",
-        ".name",
-        ".net",
-        ".one",
-        ".ong",
-        ".onl",
-        ".online",
-        ".ooo",
-        ".org",
-        ".organic",
-        ".partners",
-        ".parts",
-        ".party",
-        ".pharmacy",
-        ".photo",
-        ".photography",
-        ".photos",
-        ".physio",
-        ".pics",
-        ".pictures",
-        ".feedback",
-        ".pink",
-        ".pizza",
-        ".place",
-        ".plumbing",
-        ".plus",
-        ".poker",
-        ".porn",
-        ".post",
-        ".press",
-        ".pro",
-        ".productions",
-        ".prof",
-        ".properties",
-        ".property",
-        ".qpon",
-        ".racing",
-        ".recipes",
-        ".red",
-        ".rehab",
-        ".ren",
-        ".rent",
-        ".rentals",
-        ".repair",
-        ".report",
-        ".republican",
-        ".rest",
-        ".review",
-        ".reviews",
-        ".rich",
-        ".site",
-        ".tel",
-        ".trade",
-        ".travel",
-        ".xxx",
-        ".xyz",
-        ".yoga",
-        ".zone",
-        ".ninja",
-        ".art",
-        ".moe",
-        ".dev",
-        ".ac",
-        ".ad",
-        ".ae",
-        ".af",
-        ".ag",
-        ".ai",
-        ".al",
-        ".am",
-        ".an",
-        ".ao",
-        ".aq",
-        ".ar",
-        ".as",
-        ".at",
-        ".au",
-        ".aw",
-        ".ax",
-        ".az",
-        ".ba",
-        ".bb",
-        ".bd",
-        ".be",
-        ".bf",
-        ".bg",
-        ".bh",
-        ".bi",
-        ".bj",
-        ".bm",
-        ".bn",
-        ".bo",
-        ".br",
-        ".bs",
-        ".bt",
-        ".bv",
-        ".bw",
-        ".by",
-        ".бел",
-        ".bz",
-        ".ca",
-        ".cc",
-        ".cd",
-        ".cf",
-        ".cg",
-        ".ch",
-        ".ci",
-        ".ck",
-        ".cl",
-        ".cm",
-        ".cn",
-        ".co",
-        ".cr",
-        ".cu",
-        ".cv",
-        ".cx",
-        ".cy",
-        ".cz",
-        ".de",
-        ".dj",
-        ".dk",
-        ".dm",
-        ".do",
-        ".dz",
-        ".ec",
-        ".ee",
-        ".eg",
-        ".er",
-        ".es",
-        ".et",
-        ".eu",
-        ".fi",
-        ".fj",
-        ".fk",
-        ".fm",
-        ".fo",
-        ".fr",
-        ".ga",
-        ".gb",
-        ".gd",
-        ".ge",
-        ".gf",
-        ".gg",
-        ".gh",
-        ".gi",
-        ".gl",
-        ".gm",
-        ".gn",
-        ".gp",
-        ".gq",
-        ".gr",
-        ".gs",
-        ".gt",
-        ".gu",
-        ".gw",
-        ".gy",
-        ".hk",
-        ".hm",
-        ".hn",
-        ".hr",
-        ".ht",
-        ".hu",
-        ".id",
-        ".ie",
-        ".il",
-        ".im",
-        ".in",
-        ".io",
-        ".iq",
-        ".ir",
-        ".is",
-        ".it",
-        ".je",
-        ".jm",
-        ".jo",
-        ".jp",
-        ".ke",
-        ".kg",
-        ".kh",
-        ".ki",
-        ".km",
-        ".kn",
-        ".kp",
-        ".kr",
-        ".kd",
-        ".kw",
-        ".ky",
-        ".kz",
-        ".la",
-        ".lb",
-        ".lc",
-        ".li",
-        ".lk",
-        ".lr",
-        ".ls",
-        ".lt",
-        ".lu",
-        ".lv",
-        ".ly",
-        ".ma",
-        ".mc",
-        ".md",
-        ".me",
-        ".mg",
-        ".mh",
-        ".mk",
-        ".ml",
-        ".mm",
-        ".mn",
-        ".мон",
-        ".mo",
-        ".mp",
-        ".mq",
-        ".mr",
-        ".ms",
-        ".mt",
-        ".mu",
-        ".mv",
-        ".mw",
-        ".mx",
-        ".my",
-        ".mz",
-        ".na",
-        ".nc",
-        ".ne",
-        ".nf",
-        ".ng",
-        ".ni",
-        ".nl",
-        ".no",
-        ".np",
-        ".nr",
-        ".nu",
-        ".nz",
-        ".om",
-        ".pa",
-        ".pe",
-        ".pf",
-        ".pg",
-        ".ph",
-        ".pk",
-        ".pl",
-        ".pm",
-        ".pn",
-        ".pr",
-        ".ps",
-        ".pt",
-        ".pw",
-        ".py",
-        ".qa",
-        ".re",
-        ".ro",
-        ".rs",
-        ".срб",
-        ".ru",
-        ".рф",
-        ".rw",
-        ".sa",
-        ".sb",
-        ".sc",
-        ".sd",
-        ".se",
-        ".sg",
-        ".sh",
-        ".si",
-        ".sj",
-        ".sk",
-        ".sl",
-        ".sm",
-        ".sn",
-        ".so",
-        ".sr",
-        ".st",
-        ".su",
-        ".sv",
-        ".sy",
-        ".sz",
-        ".tc",
-        ".td",
-        ".tf",
-        ".tg",
-        ".th",
-        ".tj",
-        ".tk",
-        ".tl",
-        ".tm",
-        ".tn",
-        ".to",
-        ".tp",
-        ".tr",
-        ".tt",
-        ".tv",
-        ".tw",
-        ".tz",
-        ".ua",
-        ".укр",
-        ".ug",
-        ".uk",
-        ".us",
-        ".uy",
-        ".uz",
-        ".va",
-        ".vc",
-        ".ve",
-        ".vg",
-        ".vi",
-        ".vn",
-        ".vu",
-        ".wf",
-        ".ws",
-        ".ye",
-        ".yt",
-        ".yu",
-        ".za",
-        ".zm",
-        ".zw",};
-
-    static String[] third_domain_level = {"rt",
-        "us",
-        "www"};
+    //Файл с данными последнего апдейта
+    static String latest_update_BL = "latestUpdate.xml";
+    static Properties luBL = new Properties();
+    static String latestRemoteTarballUpdate;
+    static String latestFullUpdate;
 
     public static void main(String[] args) {
+
         log.logWrite("log");
+
+        if (new File(latest_update_BL).exists()) {
+            try {
+
+                luBL.loadFromXML(new FileInputStream(latest_update_BL));
+
+                latestRemoteTarballUpdate = luBL.getProperty("latestRemoteTarballUpdate");
+                latestFullUpdate = luBL.getProperty("latestFullUpdate");
+
+            } catch (FileNotFoundException ex) {
+                log.add(log, ex.toString());
+            } catch (IOException ex) {
+                log.add(log, ex.toString());
+            }
+        } else {
+            try {
+                luBL.setProperty("latestRemoteTarballUpdate", "0");
+                luBL.setProperty("latestFullUpdate", "0");
+                luBL.storeToXML(new FileOutputStream(latest_update_BL), "store to xml file");
+            } catch (FileNotFoundException ex) {
+                log.add(log, ex.toString());
+            } catch (IOException ex) {
+                log.add(log, ex.toString());
+            }
+        }
+
         //Создаём папку cached чтобы не было экспешнов
         File cached = new File("cached");
         if (!cached.exists()) {
@@ -421,6 +107,13 @@ public class HttpHttpsProxy implements Runnable {
         if (!downloads.exists()) {
             if (!downloads.mkdir()) {
                 log.add(log, "Cannot create folder \"downloads\"");
+            }
+        }
+        //Создаём папку blacklists для хранения списков блокировки
+        File blacklists = new File("blacklists");
+        if (!blacklists.exists()) {
+            if (!blacklists.mkdir()) {
+                log.add(log, "Cannot create folder \"blacklists\"");
             }
         }
         File logs = new File("logs");
@@ -452,6 +145,10 @@ public class HttpHttpsProxy implements Runnable {
      * Data structure for constant order lookup of blocked sites. Key: URL of
      * page/image requested. Value: URL of page/image requested.
      */
+    static HashMap<String, String> ipv4;
+    static HashMap<String, String> ipv6;
+    static HashMap<String, String> http_url;
+    static HashMap<String, String> https_url;
     static HashMap<String, String> blockedSites;
 
     /**
@@ -469,6 +166,13 @@ public class HttpHttpsProxy implements Runnable {
 
         // Load in hash map containing previously cached sites and blocked Sites
         cache = new HashMap<>();
+
+        //Эти 4 строки - задел на будущее, для фильтрации ipv4,ipv6 адресов и http/https urlов
+        ipv4 = new HashMap<>();
+        ipv6 = new HashMap<>();
+        http_url = new HashMap<>();
+        https_url = new HashMap<>();
+
         blockedSites = new HashMap<>();
         // Create array list to hold servicing threads
         servicingThreads = new HashMap<>();
@@ -484,7 +188,7 @@ public class HttpHttpsProxy implements Runnable {
                 cachedSites.createNewFile();
             } else {
                 ObjectInputStream objectInputStream;
-                try (FileInputStream fileInputStream = new FileInputStream(cachedSites)) {
+                try ( FileInputStream fileInputStream = new FileInputStream(cachedSites)) {
                     objectInputStream = new ObjectInputStream(fileInputStream);
                     cache = (HashMap<String, File>) objectInputStream.readObject();
                 }
@@ -492,13 +196,13 @@ public class HttpHttpsProxy implements Runnable {
             }
 
             // Load in blocked sites from file
-            File blockedSitesTxtFile = new File("blockedSites.txt");
+            File blockedSitesTxtFile = new File("blacklists" + fs + "blockedSites.txt");
             if (!blockedSitesTxtFile.exists()) {
                 log.add(log, "No blocked sites found - creating new file");
                 blockedSitesTxtFile.createNewFile();
             } else {
                 ObjectInputStream objectInputStream;
-                try (FileInputStream fileInputStream = new FileInputStream(blockedSitesTxtFile)) {
+                try ( FileInputStream fileInputStream = new FileInputStream(blockedSitesTxtFile)) {
                     objectInputStream = new ObjectInputStream(fileInputStream);
                     blockedSites = (HashMap<String, String>) objectInputStream.readObject();
                     //Очистим файл, чтобы не было эксепшена при следующем запуске
@@ -516,7 +220,8 @@ public class HttpHttpsProxy implements Runnable {
         }
 
         //Скачиваем blacklist
-        Download.getblacklists();
+//        Download.getblacklists();
+        getblacklists();
 
         try {
             // Create the Server Socket for the Proxy 
@@ -576,18 +281,18 @@ public class HttpHttpsProxy implements Runnable {
         log.add(log, "\nClosing Server..");
         running = false;
         try {
-            try (FileOutputStream fileOutputStream = new FileOutputStream("cachedSites.txt"); ObjectOutputStream objectOutputStream = new ObjectOutputStream(fileOutputStream)) {
+            try ( FileOutputStream fileOutputStream = new FileOutputStream("cachedSites.txt");  ObjectOutputStream objectOutputStream = new ObjectOutputStream(fileOutputStream)) {
 
                 objectOutputStream.writeObject(cache);
             }
             log.add(log, "Cached Sites written");
-            System.out.println("Cached Sites written");
+//            System.out.println("Cached Sites written");
 
-            try (FileOutputStream fileOutputStream2 = new FileOutputStream("blockedSites.txt"); ObjectOutputStream objectOutputStream2 = new ObjectOutputStream(fileOutputStream2)) {
+            try ( FileOutputStream fileOutputStream2 = new FileOutputStream("blockedSites.txt");  ObjectOutputStream objectOutputStream2 = new ObjectOutputStream(fileOutputStream2)) {
                 objectOutputStream2.writeObject(blockedSites);
             }
             log.add(log, "Blocked Site list saved");
-            System.out.println("Blocked Site list saved");
+//            System.out.println("Blocked Site list saved");
 
             try {
                 // Close all servicing threads
@@ -614,10 +319,10 @@ public class HttpHttpsProxy implements Runnable {
 
         // Close Server Socket
         try {
-            System.out.println("Terminating Connection");
+//            System.out.println("Terminating Connection");
             log.add(log, "Terminating Connection..");
             serverSocket.close();
-            System.out.println("Terminated");
+//            System.out.println("Terminated");
             System.exit(0);
         } catch (IOException e) {
             log.add(log, "Exception closing proxy's server socket");
@@ -682,7 +387,7 @@ public class HttpHttpsProxy implements Runnable {
 
     }
 
-       /**
+    /**
      * Creates a management interface which can dynamically update the proxy
      * configurations blocked : Lists currently blocked sites cached	: Lists
      * currently cached sites close	: Closes the proxy server *	: Adds * to the
@@ -690,8 +395,8 @@ public class HttpHttpsProxy implements Runnable {
      */
     @Override
     public void run() {
-        try (Scanner scanner = new Scanner(System.in)) {
-            String command;
+        try /*( Scanner scanner = new Scanner(System.in))*/ {
+//            String command;
             while (running) {
 //                System.out.println("Enter new site to block, or type \"blocked\" to see blocked sites, \"cached\" to see cached sites, or \"close\" to close server.");
 //                command = scanner.nextLine();
@@ -733,9 +438,11 @@ public class HttpHttpsProxy implements Runnable {
                         && current_time.getMinute() == 0
                         && current_time.getSecond() == 0
                         && current_time.getNano() == 0) {
-                    Download.getblacklists();
+                    getblacklists();
                 }
             }
+        } catch (Exception e) {
+            log.add(log, e.toString());
         }
     }
 
@@ -751,76 +458,345 @@ public class HttpHttpsProxy implements Runnable {
             // иначе попался файл, обрабатываем его!
             if (entry.getName().equals("urls")) {
                 List<String> url_list = FileOperations.readfile(entry);
-                url_list.forEach(ur -> {
-                    parseDomain(ur);
+                url_list.forEach(new Consumer<String>() {
+                    @Override
+                    public void accept(String ur) {
+                        String dn = parseDomain(ur);
+                        String result_add_dn = blockedSites.put(dn, dn);
+                        if (result_add_dn != null) {
+                            log.add(log, "Адрес " + dn + " успешно добавлен в список blockedSites");
+                        } else {
+                            log.add(log, "Адрес " + dn + " был добавлен ранее");
+                        }
+                        //т.к. у нас есть еще списки http_url и https_url, добавляем и в них
+                        switch (whatThis(ur)) {
+                            case (2) -> {
+                                String result_add_http_url = http_url.put(dn, dn);
+                                if (result_add_http_url != null) {
+                                    log.add(log, "Адрес " + ur + " успешно добавлен в список http_urls");
+                                } else {
+                                    log.add(log, "Адрес " + ur + " был добавлен ранее");
+                                }
+                            }
+                            case (3) -> {
+                                String result_add_https_url = https_url.put(dn, dn);
+                                if (result_add_https_url != null) {
+                                    log.add(log, "Адрес " + ur + " успешно добавлен в список https_urls");
+                                } else {
+                                    log.add(log, "Адрес " + ur + " был добавлен ранее");
+                                }
+                            }
+                        }
+                    }
                 });
             }
             if (entry.getName().equals("domains")) {
                 List<String> domains_list = FileOperations.readfile(entry);
                 domains_list.forEach(domain -> {
-                    parseDomain(domain);
+                    String dn = parseDomain(domain);
+                    String result_add_dn = blockedSites.put(dn, dn);
+                    if (result_add_dn != null) {
+                        log.add(log, "Адрес " + dn + " успешно добавлен в список blockedSites");
+                    } else {
+                        log.add(log, "Адрес " + dn + " был добавлен ранее");
+                    }
                 });
             }
         }
     }
 
-    public static void parseDomain(String domain_url) {
-
-        domain_url = domain_url.replace("http://", "");
-
-        domain_url = domain_url.replace("https://", "");
-
-//        domain_url = domain_url.replace("*.", "");
-        //Если содержит "/", значит это url
-        //Иначе это домен
-        if (domain_url.contains("/")) {
-            domain_url = domain_url.substring(0, domain_url.indexOf("/"));
-        }
-
-        String this_first_domain_level = null;
-        //Откусываем кусок домена 1-го уровня
-        for (String fdl : first_domain_levels) {
-//            Запоминаем домен первого уровня
-            if (domain_url.contains(fdl)) {
-                this_first_domain_level = fdl;
+    /*
+    Метод определяет тип строки
+    0 ipv4 адрес
+    1 ipv6 адрес
+    2 http url
+    3 https url
+    4 domain name
+     */
+    public static int whatThis(String str) {
+        String IPV4_PATTERN
+                = "(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)";
+//                        = "(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)";
+        String IPV6_PATTERN
+                = "((^|:)([0-9a-fA-F]{0,4})){1,8}";
+        String date_pattern
+                = "[0-9]{4}-[0-9]{2}-[0-9]{2}";
+        Pattern pattern_ipv4 = Pattern.compile(IPV4_PATTERN);
+        Matcher matcher_ipv4 = pattern_ipv4.matcher(str);
+        Pattern pattern_ipv6 = Pattern.compile(IPV6_PATTERN);
+        Matcher matcher_ipv6 = pattern_ipv6.matcher(str);
+        Pattern pattern_date = Pattern.compile(IPV6_PATTERN);
+        Matcher matcher_date = pattern_date.matcher(str);
+        //Ищем среди элементов ipv4 адреса 
+        if (matcher_ipv4.find()) {
+            return (0);
+        } else if (matcher_ipv6.find()) {
+            //Ищем среди элементов ipv6 адреса 
+            //Отсеиваем дату
+            if (matcher_date.find()) {
+                return (5);
             }
-            domain_url = domain_url.replace(fdl, "");
-
+            return (1);
+        } else if (str.contains("http://")) {
+            return (2);
+        } else if (str.contains("https://")) {
+            return (3);
         }
-//        Отрезаем все до точки, пока не останется домен второго уровня
-//        Можно, конечно, через lastIndexOf, но... костылиииии и велосипееееды
-        while (domain_url.contains(".")) {
-            domain_url = domain_url.substring(domain_url.indexOf(".") + 1);
-//            System.out.println(domain_url);
+        return (4);
+    }
+
+    private static ArrayList splitStr(String input_str) {
+
+        ArrayList<String> output = new ArrayList();
+        String[] urls = ((String) input_str).split(";");
+        for (String ur : urls) {
+            if (!ur.equals("")) {
+                //Если в строке присутствует запятая, значит нужно еще разделить строку по запятой
+                if (!ur.contains(",")) {
+                    //Пихаем все в один список
+                    output.add(ur);
+                } else {
+                    String[] u = ur.split(",");
+                    for (String us : u) {
+                        output.add(us);
+                    }
+                }
+            }
+        }
+        return (output);
+    }
+
+    //Парсит доменное имя из url
+    private static String parseDomain(String url) {
+
+        String domain_name = url.replace("http://", "");
+        domain_name = domain_name.replace("https://", "");
+        if (domain_name.contains("/")) {
+            domain_name = domain_name.substring(0, domain_name.indexOf("/"));
         }
 
-//        //Ключевая ошибка: 
-//        //я начал делить по точке,но это неправильно, правильно отсекать домен верхнего уровня
-//        String[] splitted_domain_url = domain_url.split(".");
-//
-//        System.out.println(domain_url.indexOf(".")+" "+domain_url.contains(".")+" "+domain_url + " Длинна домена "+(splitted_domain_url.length - 1));
-//        String first_domain_level = splitted_domain_url[splitted_domain_url.length - 1];
-//        String second_domain_level = splitted_domain_url[splitted_domain_url.length - 2];
-        //Тут мы все соединяем и добавляем в blacklist
-        //Просто domain.com
-        String domain = domain_url + this_first_domain_level;
-//        System.out.println(domain);
-        addToBL(domain);
+        return (domain_name);
+    }
 
-        //Домен третьего уровня
-        for (String tDL : third_domain_level) {
-            tDL = tDL + "." + domain;
-            addToBL(tDL);
+    private void getblacklists() {
+
+        //Качаем список запрещенных сайтов с минъюста
+        //Получение текущего содержания реестра: URL: http://api.antizapret.info/all.php
+        ArrayList urls_all = Download.download_php("http://api.antizapret.info/all.php");
+
+        log.add(log, "Добавляем сайты в blacklists c url http://api.antizapret.info/all.php");
+//==>Поле reason        
+        addAntizapretToHashMaps(urls_all);
+
+        //Получение текущего содержания базы Минюста: URL: http://api.antizapret.info/minjust.php
+        ArrayList urls_minjust = Download.download_php("http://api.antizapret.info/minjust.php");
+        log.add(log, "Добавляем сайты в blacklists c url http://api.antizapret.info/minjust.php");
+
+        //Почему то не добавляются домены с этой страницы
+//==>Поле reason
+        addAntizapretToHashMaps(urls_minjust);
+        log.add(log, "Качаем архив https://www.shallalist.de/Downloads/shallalist.tar.gz");
+
+        //Качаем архив с shallalist.de
+        //                https://www.shallalist.de/Downloads/shallalist.tar.gz.md5
+        File tarbal = new File("downloads" + fs + "shallalist.tar.gz");
+        File md5 = new File("downloads" + fs + "shallalist.tar.gz.md5");
+
+        long lRM = 0;
+        try {
+            lRM = Download.date_url(new URL("https://www.shallalist.de/Downloads/shallalist.tar.gz"));
+        } catch (MalformedURLException ex) {
+            log.add(log, ex.toString());
+        }
+
+        //Если архив уже скачан
+        if (tarbal.exists()) {
+            log.add(log, "Архив был скачан ранее");
+            long lRTU = Long.parseLong(latestRemoteTarballUpdate);
+            //Если дата удаленной модификации файла изменилась
+            if (lRTU != lRM) {
+                log.add(log, "Дата удаленной модификации поменялась");
+                //Если дата скачанного файла > записанной даты
+                //Что маловероятно
+                if (lRTU > tarbal.lastModified()) {
+                    //перекачиваем
+                    log.add(log, "Перекачиваем");
+                    //Если файлы существуют, удаляем
+                    if (tarbal.exists()) {
+                        tarbal.delete();
+                    }
+                    if (md5.exists()) {
+                        md5.delete();
+                    }
+
+                }
+                getTarball(tarbal, md5);
+            }
+        } else {
+            getTarball(tarbal, md5);
+        }
+//==>        //Потом требуется перебрать все файлы и папки и добавить домены и url к нашим спискам
+        File tarbal_folder = new File("blacklists" + fs + "BL");
+        processFilesFromFolder(tarbal_folder);
+        try {
+            luBL.storeToXML(new FileOutputStream(latest_update_BL), "store to xml file");
+
+        } catch (FileNotFoundException ex) {
+            log.add(log, ex.toString());
+        } catch (IOException ex) {
+            log.add(log, ex.toString());
+        }
+
+        //Сохраняем getblacklists
+        try ( FileOutputStream fileOutputStream2 = new FileOutputStream("blockedSites.txt");  ObjectOutputStream objectOutputStream2 = new ObjectOutputStream(fileOutputStream2)) {
+            objectOutputStream2.writeObject(blockedSites);
+        } catch (FileNotFoundException ex) {
+            log.add(log, ex.toString());
+        } catch (IOException ex) {
+            log.add(log, ex.toString());
+        }
+    }
+
+    //метод заполняет списки с антизапрета
+    private void addAntizapretToHashMaps(ArrayList urls) {
+        for (Object url : urls) {
+
+            String urls_str = (String) url;
+            //Режем строку на части
+            ArrayList<String> splitted_str = splitStr(urls_str);
+            for (String u : splitted_str) {
+                //Проверяем что это за строка
+                switch (whatThis(u)) {
+                    //ipv4
+                    case (0):
+                        String result_add_ipv4 = ipv4.put(u, u);
+                        if (result_add_ipv4 != null) {
+                            log.add(log, "Адрес " + u + " успешно добавлен в список ipv4");
+                        } else {
+                            log.add(log, "Адрес " + u + " был добавлен ранее");
+                        }
+//==>                        //На первое время добавляем еще и в blockedSites
+                        String result_add_blacklist = blockedSites.put(u, u);
+                        if (result_add_blacklist != null) {
+                            log.add(log, "Адрес " + u + " успешно добавлен в список blockedSites");
+                        } else {
+                            log.add(log, "Адрес " + u + " был добавлен ранее");
+                        }
+                        break;
+
+                    //ipv6
+                    case (1):
+                        String result_add_ipv6 = ipv6.put(u, u);
+                        if (result_add_ipv6 != null) {
+                            log.add(log, "Адрес " + u + " успешно добавлен в список ipv6");
+                        } else {
+                            log.add(log, "Адрес " + u + " был добавлен ранее");
+                        }
+//==>                        //На первое время добавляем еще и в blockedSites
+                        result_add_blacklist = blockedSites.put(u, u);
+                        if (result_add_blacklist != null) {
+                            log.add(log, "Адрес " + u + " успешно добавлен в список blockedSites");
+                        } else {
+                            log.add(log, "Адрес " + u + " был добавлен ранее");
+                        }
+                        break;
+                    //http
+                    case (2):
+
+                        String result_add_http = http_url.put(u, u);
+                        if (result_add_http != null) {
+                            log.add(log, "Url " + u + " успешно добавлен в список http_url");
+                        } else {
+                            log.add(log, "Адрес " + u + " был добавлен ранее");
+                        }
+                        //На всякий случай парсим домен и пихаем в blockedSites
+                        String dn = parseDomain(u);
+                        result_add_blacklist = blockedSites.put(dn, dn);
+                        if (result_add_blacklist != null) {
+                            log.add(log, "Адрес " + dn + " успешно добавлен в список blockedSites");
+                        } else {
+                            log.add(log, "Адрес " + u + " был добавлен ранее");
+                        }
+                        break;
+
+                    //https
+                    case (3):
+                        //Тут нужно добавить в список https и спарсить домен
+                        String result_add_https = https_url.put(u, u);
+                        if (result_add_https != null) {
+                            log.add(log, "Url " + u + " успешно добавлен в список https_url");
+                        } else {
+                            log.add(log, "Адрес " + u + " был добавлен ранее");
+                        }
+                        //На всякий случай парсим домен и пихаем в blockedSites
+                        dn = parseDomain(u);
+                        result_add_blacklist = blockedSites.put(dn, dn);
+                        if (result_add_blacklist != null) {
+                            log.add(log, "Адрес " + dn + " успешно добавлен в список blockedSites");
+                        } else {
+                            log.add(log, "Адрес " + u + " был добавлен ранее");
+                        }
+                        break;
+                    //domain_name
+                    case (4):
+                        result_add_blacklist = blockedSites.put(u, u);
+                        if (result_add_blacklist != null) {
+                            log.add(log, "Адрес " + u + " успешно добавлен в список blockedSites");
+                        } else {
+                            log.add(log, "Адрес " + u + " был добавлен ранее");
+                        }
+                        break;
+                }
+
+            }
+
         }
 
     }
 
-    //Непосредственная добавка домена в сам BlackList
-    private static void addToBL(String domain) {
-        log.add(log, "Попытка добавить домен: " + domain + " ...");
-        String dont_added_domain = blockedSites.put(domain, domain);
-        if (dont_added_domain == null) {
-            log.add(log, domain + " Домен успешно добавлен");
+    private void getTarball(File tarbal, File md5) {
+        //Качаем файлы архива и md5 суммы
+        try {
+            Download.download(tarbal, new URL("https://www.shallalist.de/Downloads/shallalist.tar.gz"));
+            Download.download(md5, new URL("https://www.shallalist.de/Downloads/shallalist.tar.gz.md5"));
+        } catch (MalformedURLException ex) {
+            log.add(log, ex.toString());
+        }
+
+        try {
+            luBL.setProperty("latestRemoteTarballUpdate", String.valueOf(Download.date_url(new URL("https://www.shallalist.de/Downloads/shallalist.tar.gz"))));
+        } catch (MalformedURLException ex) {
+            log.add(log, ex.toString());
+        }
+
+        try {
+            String md5summ_file = FileSecret.getMd5Summ(tarbal.getAbsolutePath());
+            String file_md5 = FileOperations.readMd5File(md5);
+            String md5Summ_str = file_md5.substring(0, file_md5.indexOf(" "));
+            if (md5summ_file.equals(md5Summ_str)) {
+                if (file_md5.substring(file_md5.indexOf(" ") + 2, file_md5.length()).equals(tarbal.getName())) {
+
+                    File destTar = new File(tarbal.getParentFile().getAbsolutePath() + fs + "tarball");
+                    File destDir = new File("blacklists");
+
+                    if (destDir.exists()) {
+                        destDir.delete();
+                    }
+                    if (destTar.exists()) {
+                        destTar.delete();
+                    }
+                    destTar.mkdirs();
+
+                    //распаковываем
+                    Archive.unTar(Archive.unGzip(tarbal, destTar), destDir);
+
+                }
+            } else {
+                //Выводим ошибку
+                log.add(log, "Не совпадает сумма md5");
+            }
+        } catch (Exception ex) {
+            log.add(log, ex.toString());
         }
     }
 
