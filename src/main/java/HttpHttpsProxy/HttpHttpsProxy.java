@@ -12,6 +12,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.net.MalformedURLException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -24,10 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Scanner;
 import java.util.function.Consumer;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -80,9 +79,9 @@ public class HttpHttpsProxy implements Runnable {
                 latestFullUpdate = luBL.getProperty("latestFullUpdate");
 
             } catch (FileNotFoundException ex) {
-                log.add(log, ex.toString());
+                log.add(log, getStackTrace(ex));
             } catch (IOException ex) {
-                log.add(log, ex.toString());
+                log.add(log, getStackTrace(ex));
             }
         } else {
             try {
@@ -90,9 +89,9 @@ public class HttpHttpsProxy implements Runnable {
                 luBL.setProperty("latestFullUpdate", "0");
                 luBL.storeToXML(new FileOutputStream(latest_update_BL), "store to xml file");
             } catch (FileNotFoundException ex) {
-                log.add(log, ex.toString());
+                log.add(log, getStackTrace(ex));
             } catch (IOException ex) {
-                log.add(log, ex.toString());
+                log.add(log, getStackTrace(ex));
             }
         }
 
@@ -156,6 +155,7 @@ public class HttpHttpsProxy implements Runnable {
      * This list is required in order to join all threads on closing of server
      */
     static HashMap<Thread, RequestHandler> servicingThreads;
+    File blockedSitesHashMapFile = new File("blacklists" + fs + "blockedSites.txt");
 
     /**
      * Create the Proxy Server
@@ -196,32 +196,51 @@ public class HttpHttpsProxy implements Runnable {
             }
 
             // Load in blocked sites from file
-            File blockedSitesTxtFile = new File("blacklists" + fs + "blockedSites.txt");
-            if (!blockedSitesTxtFile.exists()) {
+            if (!blockedSitesHashMapFile.exists()) {
                 log.add(log, "No blocked sites found - creating new file");
-                blockedSitesTxtFile.createNewFile();
+                blockedSitesHashMapFile.createNewFile();
             } else {
                 ObjectInputStream objectInputStream;
-                try ( FileInputStream fileInputStream = new FileInputStream(blockedSitesTxtFile)) {
+                try ( FileInputStream fileInputStream = new FileInputStream(blockedSitesHashMapFile)) {
                     objectInputStream = new ObjectInputStream(fileInputStream);
                     blockedSites = (HashMap<String, String>) objectInputStream.readObject();
                     //Очистим файл, чтобы не было эксепшена при следующем запуске
-                    blockedSitesTxtFile.delete();
-                    blockedSitesTxtFile.createNewFile();
+                    long lstMdfd = blockedSitesHashMapFile.lastModified();
+                    blockedSitesHashMapFile.delete();
+                    blockedSitesHashMapFile.createNewFile();
+                    blockedSitesHashMapFile.setLastModified(lstMdfd);
+
                 }
                 objectInputStream.close();
             }
         } catch (IOException e) {
             log.add(log, "Error loading previously cached sites file");
-            log.add(log, e.toString());
+            log.add(log, getStackTrace(e));
         } catch (ClassNotFoundException e) {
             log.add(log, "Class not found loading in preivously cached sites file");
-            log.add(log, e.toString());
+            log.add(log, getStackTrace(e));
         }
 
         //Скачиваем blacklist
 //        Download.getblacklists();
-        getblacklists();
+        //Проверка на существование файла
+        log.add(log, "Проверка последнего обновления файла " + blockedSitesHashMapFile.getName());
+        if (blockedSitesHashMapFile.exists()) {
+            if (blockedSites.size() > 0) {
+                //Если последняя модификация файла проходила больше 6 часов назад
+                if ((System.currentTimeMillis() - blockedSitesHashMapFile.lastModified()) > 6 * 60 * 60 * 1000) {
+                    getblacklists();
+                } else {
+                    log.add(log, "Файл недавно обновлялся");
+                }
+            } else {
+                getblacklists();
+            }
+
+        } else {
+            log.add(log, "Отсутствует файл для загрузки черных списков!!!");
+            System.exit(1);
+        }
 
         try {
             // Create the Server Socket for the Proxy 
@@ -234,11 +253,13 @@ public class HttpHttpsProxy implements Runnable {
         } // Catch exceptions associated with opening socket
         catch (SocketException se) {
             log.add(log, "Socket Exception when connecting to client");
-            log.add(log, se.toString());
+            log.add(log, getStackTrace(se));
         } catch (SocketTimeoutException ste) {
             log.add(log, "Timeout occured while connecting to client");
+            log.add(log, getStackTrace(ste));
         } catch (IOException io) {
             log.add(log, "IO exception when connecting to client");
+            log.add(log, getStackTrace(io));
         }
 
     }
@@ -266,8 +287,9 @@ public class HttpHttpsProxy implements Runnable {
             } catch (SocketException e) {
                 // Socket exception is triggered by management system to shut down the proxy 
                 log.add(log, "Server closed");
+                log.add(log, getStackTrace(e));
             } catch (IOException e) {
-                log.add(log, e.toString());
+                log.add(log, getStackTrace(e));
             }
         }
     }
@@ -309,12 +331,12 @@ public class HttpHttpsProxy implements Runnable {
                     }
                 }
             } catch (InterruptedException e) {
-                log.add(log, e.toString());
+                log.add(log, getStackTrace(e));
             }
 
         } catch (IOException e) {
             log.add(log, "Error saving cache/blocked sites");
-            log.add(log, e.toString());
+            log.add(log, getStackTrace(e));
         }
 
         // Close Server Socket
@@ -326,7 +348,7 @@ public class HttpHttpsProxy implements Runnable {
             System.exit(0);
         } catch (IOException e) {
             log.add(log, "Exception closing proxy's server socket");
-            log.add(log, e.toString());
+            log.add(log, getStackTrace(e));
         }
 
     }
@@ -358,30 +380,47 @@ public class HttpHttpsProxy implements Runnable {
      * @return true if URL is blocked, false otherwise
      */
     public static boolean isBlocked(String url) {
+//        if(url.contains("pornhub")){
+//            System.err.println("\t\t!!!PORNHUB!!!");
+//            return true;
+//        }
 
+        //Если url это http адрес
+        if (url.contains("http://")) {
+            if (http_url.get(url) != null) {
+                return true;
+            }
+            //Проверяем домен на вхождение в blockedSites
+            if (blockedSites.get(parseDomain(url)) != null) {
+                return true;
+            }
+        }
+        //На будущее, для фильтрации https
+        //Если url это https адрес
+        if (url.contains("https://")) {
+            if (https_url.get(url) != null) {
+                return true;
+            }
+            //Проверяем домен на вхождение в blockedSites
+            if (blockedSites.get(parseDomain(url)) != null) {
+                return true;
+            }
+        }
+        //Вхождение в список ipv4
+        if (ipv4.get(parseDomain(url)) != null) {
+            return true;
+        }
+        //Вхождение в список ipv6
+        if (ipv6.get(parseDomain(url)) != null) {
+            return true;
+        }
+        //Вхождение в список blockedSites
         if (blockedSites.get(url) != null) {
 //            log.add(log, blockedSites.get(url));
             return true;
 //        } else if (urls.get(url) != null) {
 ////            log.add(log, urls.get(url));
 //            return true;
-        } else if (url.substring(0, 7).equals("http://")) {
-            url = url.replace("http://", "https://");
-            if (blockedSites.get(url) != null) {
-//                log.add(log, blockedSites.get(url));
-                return true;
-//            } else if (urls.get(url) != null) {
-////                log.add(log, urls.get(url));
-//                return true;
-            }
-            url = url.replace("https://", "");
-            if (blockedSites.get(url) != null) {
-//                log.add(log, blockedSites.get(url));
-                return true;
-//            } else if (urls.get(url) != null) {
-////                log.add(log, urls.get(url));
-//                return true;
-            }
         }
         return false;
 
@@ -442,7 +481,7 @@ public class HttpHttpsProxy implements Runnable {
                 }
             }
         } catch (Exception e) {
-            log.add(log, e.toString());
+            log.add(log, getStackTrace(e));
         }
     }
 
@@ -573,6 +612,9 @@ public class HttpHttpsProxy implements Runnable {
         domain_name = domain_name.replace("https://", "");
         if (domain_name.contains("/")) {
             domain_name = domain_name.substring(0, domain_name.indexOf("/"));
+            if (domain_name.contains(":")) {
+                domain_name = domain_name.substring(0, domain_name.indexOf(":"));
+            }
         }
 
         return (domain_name);
@@ -606,7 +648,7 @@ public class HttpHttpsProxy implements Runnable {
         try {
             lRM = Download.date_url(new URL("https://www.shallalist.de/Downloads/shallalist.tar.gz"));
         } catch (MalformedURLException ex) {
-            log.add(log, ex.toString());
+            log.add(log, getStackTrace(ex));
         }
 
         //Если архив уже скачан
@@ -642,33 +684,41 @@ public class HttpHttpsProxy implements Runnable {
             luBL.storeToXML(new FileOutputStream(latest_update_BL), "store to xml file");
 
         } catch (FileNotFoundException ex) {
-            log.add(log, ex.toString());
+            log.add(log, getStackTrace(ex));
         } catch (IOException ex) {
-            log.add(log, ex.toString());
+            log.add(log, getStackTrace(ex));
         }
-
+        if (blockedSitesHashMapFile.exists()) {
+            try {
+                blockedSitesHashMapFile.delete();
+                blockedSitesHashMapFile.createNewFile();
+            } catch (IOException ex) {
+                log.add(log, "Не удалось очистить файл " + blockedSitesHashMapFile.getName());
+                log.add(log, getStackTrace(ex));
+            }
+        }
         //Сохраняем getblacklists
-        try ( FileOutputStream fileOutputStream2 = new FileOutputStream("blockedSites.txt");  ObjectOutputStream objectOutputStream2 = new ObjectOutputStream(fileOutputStream2)) {
+        try ( FileOutputStream fileOutputStream2 = new FileOutputStream("blacklists" + fs + "blockedSites.txt");  ObjectOutputStream objectOutputStream2 = new ObjectOutputStream(fileOutputStream2)) {
             objectOutputStream2.writeObject(blockedSites);
         } catch (FileNotFoundException ex) {
-            log.add(log, ex.toString());
+            log.add(log, getStackTrace(ex));
         } catch (IOException ex) {
-            log.add(log, ex.toString());
+            log.add(log, getStackTrace(ex));
         }
     }
 
     //метод заполняет списки с антизапрета
     private void addAntizapretToHashMaps(ArrayList urls) {
+        //Очень медленный перебор, надо думать как избавиться от ArrayList
         for (Object url : urls) {
 
             String urls_str = (String) url;
             //Режем строку на части
             ArrayList<String> splitted_str = splitStr(urls_str);
-            for (String u : splitted_str) {
+            splitted_str.forEach(u -> {
                 //Проверяем что это за строка
                 switch (whatThis(u)) {
-                    //ipv4
-                    case (0):
+                    case (0) -> {
                         String result_add_ipv4 = ipv4.put(u, u);
                         if (result_add_ipv4 != null) {
                             log.add(log, "Адрес " + u + " успешно добавлен в список ipv4");
@@ -682,10 +732,8 @@ public class HttpHttpsProxy implements Runnable {
                         } else {
                             log.add(log, "Адрес " + u + " был добавлен ранее");
                         }
-                        break;
-
-                    //ipv6
-                    case (1):
+                    }
+                    case (1) -> {
                         String result_add_ipv6 = ipv6.put(u, u);
                         if (result_add_ipv6 != null) {
                             log.add(log, "Адрес " + u + " успешно добавлен в список ipv6");
@@ -693,16 +741,14 @@ public class HttpHttpsProxy implements Runnable {
                             log.add(log, "Адрес " + u + " был добавлен ранее");
                         }
 //==>                        //На первое время добавляем еще и в blockedSites
-                        result_add_blacklist = blockedSites.put(u, u);
+                        String result_add_blacklist = blockedSites.put(u, u);
                         if (result_add_blacklist != null) {
                             log.add(log, "Адрес " + u + " успешно добавлен в список blockedSites");
                         } else {
                             log.add(log, "Адрес " + u + " был добавлен ранее");
                         }
-                        break;
-                    //http
-                    case (2):
-
+                    }
+                    case (2) -> {
                         String result_add_http = http_url.put(u, u);
                         if (result_add_http != null) {
                             log.add(log, "Url " + u + " успешно добавлен в список http_url");
@@ -711,16 +757,14 @@ public class HttpHttpsProxy implements Runnable {
                         }
                         //На всякий случай парсим домен и пихаем в blockedSites
                         String dn = parseDomain(u);
-                        result_add_blacklist = blockedSites.put(dn, dn);
+                        String result_add_blacklist = blockedSites.put(dn, dn);
                         if (result_add_blacklist != null) {
                             log.add(log, "Адрес " + dn + " успешно добавлен в список blockedSites");
                         } else {
                             log.add(log, "Адрес " + u + " был добавлен ранее");
                         }
-                        break;
-
-                    //https
-                    case (3):
+                    }
+                    case (3) -> {
                         //Тут нужно добавить в список https и спарсить домен
                         String result_add_https = https_url.put(u, u);
                         if (result_add_https != null) {
@@ -729,26 +773,29 @@ public class HttpHttpsProxy implements Runnable {
                             log.add(log, "Адрес " + u + " был добавлен ранее");
                         }
                         //На всякий случай парсим домен и пихаем в blockedSites
-                        dn = parseDomain(u);
-                        result_add_blacklist = blockedSites.put(dn, dn);
+                        String dn = parseDomain(u);
+                        String result_add_blacklist = blockedSites.put(dn, dn);
                         if (result_add_blacklist != null) {
                             log.add(log, "Адрес " + dn + " успешно добавлен в список blockedSites");
                         } else {
                             log.add(log, "Адрес " + u + " был добавлен ранее");
                         }
-                        break;
-                    //domain_name
-                    case (4):
-                        result_add_blacklist = blockedSites.put(u, u);
+                    }
+                    case (4) -> {
+                        String result_add_blacklist = blockedSites.put(u, u);
                         if (result_add_blacklist != null) {
                             log.add(log, "Адрес " + u + " успешно добавлен в список blockedSites");
                         } else {
                             log.add(log, "Адрес " + u + " был добавлен ранее");
                         }
-                        break;
+                    }
                 }
-
-            }
+                //ipv4
+                //ipv6
+                //http
+                //https
+                //domain_name
+            });
 
         }
 
@@ -760,13 +807,13 @@ public class HttpHttpsProxy implements Runnable {
             Download.download(tarbal, new URL("https://www.shallalist.de/Downloads/shallalist.tar.gz"));
             Download.download(md5, new URL("https://www.shallalist.de/Downloads/shallalist.tar.gz.md5"));
         } catch (MalformedURLException ex) {
-            log.add(log, ex.toString());
+            log.add(log, getStackTrace(ex));
         }
 
         try {
             luBL.setProperty("latestRemoteTarballUpdate", String.valueOf(Download.date_url(new URL("https://www.shallalist.de/Downloads/shallalist.tar.gz"))));
         } catch (MalformedURLException ex) {
-            log.add(log, ex.toString());
+            log.add(log, getStackTrace(ex));
         }
 
         try {
@@ -796,8 +843,14 @@ public class HttpHttpsProxy implements Runnable {
                 log.add(log, "Не совпадает сумма md5");
             }
         } catch (Exception ex) {
-            log.add(log, ex.toString());
+            log.add(log, getStackTrace(ex));
         }
+    }
+
+    public static String getStackTrace(Throwable t) {
+        StringWriter sw = new StringWriter();
+        t.printStackTrace(new PrintWriter(sw));
+        return sw.toString();
     }
 
 }
