@@ -15,7 +15,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import java.net.URLConnection;
-import java.util.ArrayList;
+import java.util.HashMap;
 
 /**
  *
@@ -27,9 +27,9 @@ public class Download {
 
     //Т.к. сайт минъюста кривой и страничка формируется неприлично долго, требуется
     // качать страницу через jsoup, возможно это можно сделать по другому, но пока не знаю как
-    public static ArrayList download_php(String url) {
+    public static HashMap download_php(String url) {
 
-        ArrayList<String> urls = new ArrayList();
+        HashMap<String, String> urls = new HashMap();
 
         try {
             //Маскируемся под хром
@@ -42,7 +42,7 @@ public class Download {
             Element body = doc.body();
             String[] bd = body.text().split(" ");
             for (String b : bd) {
-                urls.add(b);
+                urls.put(b,b);
             }
 //            log.add(log,"Blocked_sites: ");
 //            for (String key : blocked_sites.keySet()) {

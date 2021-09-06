@@ -624,14 +624,14 @@ public class HttpHttpsProxy implements Runnable {
 
         //Качаем список запрещенных сайтов с минъюста
         //Получение текущего содержания реестра: URL: http://api.antizapret.info/all.php
-        ArrayList urls_all = Download.download_php("http://api.antizapret.info/all.php");
+        HashMap urls_all = Download.download_php("http://api.antizapret.info/all.php");
 
         log.add(log, "Добавляем сайты в blacklists c url http://api.antizapret.info/all.php");
 //==>Поле reason        
         addAntizapretToHashMaps(urls_all);
 
         //Получение текущего содержания базы Минюста: URL: http://api.antizapret.info/minjust.php
-        ArrayList urls_minjust = Download.download_php("http://api.antizapret.info/minjust.php");
+        HashMap urls_minjust = Download.download_php("http://api.antizapret.info/minjust.php");
         log.add(log, "Добавляем сайты в blacklists c url http://api.antizapret.info/minjust.php");
 
         //Почему то не добавляются домены с этой страницы
@@ -708,94 +708,90 @@ public class HttpHttpsProxy implements Runnable {
     }
 
     //метод заполняет списки с антизапрета
-    private void addAntizapretToHashMaps(ArrayList urls) {
-        //Очень медленный перебор, надо думать как избавиться от ArrayList
-        for (Object url : urls) {
+    private void addAntizapretToHashMaps(HashMap urls) {
+        if (!urls.isEmpty() && urls.size() > 0) {
 
-            String urls_str = (String) url;
-            //Режем строку на части
-            ArrayList<String> splitted_str = splitStr(urls_str);
-            splitted_str.forEach(u -> {
-                //Проверяем что это за строка
-                switch (whatThis(u)) {
-                    case (0) -> {
-                        String result_add_ipv4 = ipv4.put(u, u);
-                        if (result_add_ipv4 != null) {
-                            log.add(log, "Адрес " + u + " успешно добавлен в список ipv4");
-                        } else {
-                            log.add(log, "Адрес " + u + " был добавлен ранее");
-                        }
+            for (Object url : urls.keySet()) {
+                String urls_str = (String) urls.get(url);
+                //Режем строку на части
+                ArrayList<String> splitted_str = splitStr(urls_str);
+                splitted_str.forEach(u -> {
+                    //Проверяем что это за строка
+                    switch (whatThis(u)) {
+                        case (0) -> {
+                            String result_add_ipv4 = ipv4.put(u, u);
+                            if (result_add_ipv4 != null) {
+                                log.add(log, "Адрес " + u + " успешно добавлен в список ipv4");
+                            } else {
+                                log.add(log, "Адрес " + u + " был добавлен ранее");
+                            }
 //==>                        //На первое время добавляем еще и в blockedSites
-                        String result_add_blacklist = blockedSites.put(u, u);
-                        if (result_add_blacklist != null) {
-                            log.add(log, "Адрес " + u + " успешно добавлен в список blockedSites");
-                        } else {
-                            log.add(log, "Адрес " + u + " был добавлен ранее");
+                            String result_add_blacklist = blockedSites.put(u, u);
+                            if (result_add_blacklist != null) {
+                                log.add(log, "Адрес " + u + " успешно добавлен в список blockedSites");
+                            } else {
+                                log.add(log, "Адрес " + u + " был добавлен ранее");
+                            }
                         }
-                    }
-                    case (1) -> {
-                        String result_add_ipv6 = ipv6.put(u, u);
-                        if (result_add_ipv6 != null) {
-                            log.add(log, "Адрес " + u + " успешно добавлен в список ipv6");
-                        } else {
-                            log.add(log, "Адрес " + u + " был добавлен ранее");
-                        }
+                        case (1) -> {
+                            String result_add_ipv6 = ipv6.put(u, u);
+                            if (result_add_ipv6 != null) {
+                                log.add(log, "Адрес " + u + " успешно добавлен в список ipv6");
+                            } else {
+                                log.add(log, "Адрес " + u + " был добавлен ранее");
+                            }
 //==>                        //На первое время добавляем еще и в blockedSites
-                        String result_add_blacklist = blockedSites.put(u, u);
-                        if (result_add_blacklist != null) {
-                            log.add(log, "Адрес " + u + " успешно добавлен в список blockedSites");
-                        } else {
-                            log.add(log, "Адрес " + u + " был добавлен ранее");
+                            String result_add_blacklist = blockedSites.put(u, u);
+                            if (result_add_blacklist != null) {
+                                log.add(log, "Адрес " + u + " успешно добавлен в список blockedSites");
+                            } else {
+                                log.add(log, "Адрес " + u + " был добавлен ранее");
+                            }
+                        }
+                        case (2) -> {
+                            String result_add_http = http_url.put(u, u);
+                            if (result_add_http != null) {
+                                log.add(log, "Url " + u + " успешно добавлен в список http_url");
+                            } else {
+                                log.add(log, "Адрес " + u + " был добавлен ранее");
+                            }
+                        }
+                        case (3) -> {
+                            //Тут нужно добавить в список https и спарсить домен
+                            String result_add_https = https_url.put(u, u);
+                            if (result_add_https != null) {
+                                log.add(log, "Url " + u + " успешно добавлен в список https_url");
+                            } else {
+                                log.add(log, "Адрес " + u + " был добавлен ранее");
+                            }
+                            //На всякий случай парсим домен и пихаем в blockedSites
+                            String dn = parseDomain(u);
+                            String result_add_blacklist = blockedSites.put(dn, dn);
+                            if (result_add_blacklist != null) {
+                                log.add(log, "Адрес " + dn + " успешно добавлен в список blockedSites");
+                            } else {
+                                log.add(log, "Адрес " + u + " был добавлен ранее");
+                            }
+                        }
+                        case (4) -> {
+                            String result_add_blacklist = blockedSites.put(u, u);
+                            if (result_add_blacklist != null) {
+                                log.add(log, "Адрес " + u + " успешно добавлен в список blockedSites");
+                            } else {
+                                log.add(log, "Адрес " + u + " был добавлен ранее");
+                            }
                         }
                     }
-                    case (2) -> {
-                        String result_add_http = http_url.put(u, u);
-                        if (result_add_http != null) {
-                            log.add(log, "Url " + u + " успешно добавлен в список http_url");
-                        } else {
-                            log.add(log, "Адрес " + u + " был добавлен ранее");
-                        }
-                        //На всякий случай парсим домен и пихаем в blockedSites
-                        String dn = parseDomain(u);
-                        String result_add_blacklist = blockedSites.put(dn, dn);
-                        if (result_add_blacklist != null) {
-                            log.add(log, "Адрес " + dn + " успешно добавлен в список blockedSites");
-                        } else {
-                            log.add(log, "Адрес " + u + " был добавлен ранее");
-                        }
-                    }
-                    case (3) -> {
-                        //Тут нужно добавить в список https и спарсить домен
-                        String result_add_https = https_url.put(u, u);
-                        if (result_add_https != null) {
-                            log.add(log, "Url " + u + " успешно добавлен в список https_url");
-                        } else {
-                            log.add(log, "Адрес " + u + " был добавлен ранее");
-                        }
-                        //На всякий случай парсим домен и пихаем в blockedSites
-                        String dn = parseDomain(u);
-                        String result_add_blacklist = blockedSites.put(dn, dn);
-                        if (result_add_blacklist != null) {
-                            log.add(log, "Адрес " + dn + " успешно добавлен в список blockedSites");
-                        } else {
-                            log.add(log, "Адрес " + u + " был добавлен ранее");
-                        }
-                    }
-                    case (4) -> {
-                        String result_add_blacklist = blockedSites.put(u, u);
-                        if (result_add_blacklist != null) {
-                            log.add(log, "Адрес " + u + " успешно добавлен в список blockedSites");
-                        } else {
-                            log.add(log, "Адрес " + u + " был добавлен ранее");
-                        }
-                    }
-                }
-                //ipv4
-                //ipv6
-                //http
-                //https
-                //domain_name
-            });
+                    //ipv4
+                    //ipv6
+                    //http
+                    //https
+                    //domain_name
+                });
+
+            }
+        }else {
+            log.add(log,"Список url'ов пуст!");
 
         }
 

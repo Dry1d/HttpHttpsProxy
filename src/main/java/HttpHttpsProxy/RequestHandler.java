@@ -112,7 +112,7 @@ public class RequestHandler implements Runnable {
             log.add(log, "Error reading request from client");
             return;
         }
-System.out.println(requestString);
+//System.out.println(requestString);
         // Parse out URL
         log.add(log, "Client: " + clientSocket.getInetAddress() + ";Request Received " + requestString);
 //        log.add(log,requestString);
